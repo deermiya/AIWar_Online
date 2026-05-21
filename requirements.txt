@@ -1,0 +1,7 @@
+flask
+requests
+google-genai
+python-dotenv
+flask-limiter
+edge-tts
+gunicorn
