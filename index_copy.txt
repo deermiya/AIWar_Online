@@ -107,14 +107,6 @@
       z-index: 10;
     }
 
-    .app-main-grid {
-      display: grid;
-      grid-template-columns: 330px 1fr;
-      gap: 20px;
-      height: 100%;
-      min-height: 0;
-    }
-
     /* HEADER */
     .app-header {
       display: flex;
@@ -182,8 +174,7 @@
       font-weight: bold;
     }
 
-    /* 布局 */
-    /* 磨砂玻璃全息面板 */
+    /* 布局�    /* 磨砂玻璃全息面板 */
     .cy-panel {
       background: var(--c-panel-bg);
       border: 1px solid var(--c-panel-border);
@@ -883,6 +874,7 @@
           <span class="cy-checkbox-custom"></span>
           <span class="cy-checkbox-label">真人加入 (替代Qwen)</span>
         </label>
+        <button class="cy-btn" id="introBtn" onclick="runIntro()">赛前介绍</button>
         <button class="cy-btn yellow" id="actionBtn" onclick="handleAction()">开始执行</button>
         <button class="cy-btn red" id="endBtn" onclick="endGame()" style="display:none">强制终止</button>
         <button class="cy-btn" id="ttsBtn" onclick="toggleTTS()" style="background: var(--c-cyan);">语音: 开</button>
@@ -1274,7 +1266,7 @@
       const inGame = G.phase !== "setup" && G.phase !== "game_over";
       endBtn.style.display = inGame ? "" : "none";
       endBtn.disabled = G.loading;
-      if (introBtn) introBtn.disabled = G.loading;
+      introBtn.disabled = G.loading;
 
       // 更新 TTS 按钮状态
       if (ttsBtn) {
@@ -1365,11 +1357,11 @@
       try {
         const resp = await callPlayer(player.name, systemPrompt, userPrompt);
         const speech = resp.replace(/^["'`\s]+|["'`\s]+$/g, "").trim();
-        if (!speech) throw new Error("空白发言");
-        setSpeaking(player.id, speech);
-        if (logIdx >= 0) G.logs[logIdx] = { content: `${player.name}：${speech}`, type: "speech", playerData: player };
-        renderChat();
-        await playTTS(player.name, speech);
+        await playTTS(player.name, speech, () => {
+          setSpeaking(player.id, speech);
+          if (logIdx >= 0) G.logs[logIdx] = { content: `${player.name}：${speech}`, type: "speech", playerData: player };
+          renderChat();
+        });
         audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(null); });
       } catch (e) {
         const newId = `retry_${Date.now()}_${player.id}`;
@@ -1400,7 +1392,6 @@ ${roleInfo}
 
     function startGame() {
       const roles = shuffle(ROLE_POOL);
-      const ttsEnabled = G.ttsEnabled;
       const isHumanJoin = document.getElementById("joinAsHuman")?.checked;
       let finalPlayersCfg = JSON.parse(JSON.stringify(PLAYERS_CFG));
       if (isHumanJoin) {
@@ -1415,8 +1406,7 @@ ${roleInfo}
       G = {
         players: finalPlayersCfg.map((p, i) => ({ ...p, role: roles[i], alive: true })),
         phase: "night", day: 1, logs: [], loading: false, winner: null, showRoles: true,
-        witchItems: { save: true, poison: true }, seerHistory: [], gameHistory: [], speakingId: null,
-        ttsEnabled,
+        witchItems: { save: true, poison: true }, seerHistory: [], gameHistory: [], speakingId: null
       };
       addLog("系统：角色分配完毕", "phase");
       G.players.forEach(p => addLog(`  [系统] ${p.name} → ${p.role}`, "role"));
@@ -1604,12 +1594,12 @@ ${G.witchItems.save ? "你有解药" : "无解药"}，${G.witchItems.poison ? "�
         try {
           const resp = await callPlayer(p.name, makeSystemPrompt(p), prompt);
           const speech = resp.replace(/^["'`\s]+|["'`\s]+$/g, "").trim();
-          if (!speech) throw new Error("空白发言");
           prevSpeeches.push({ name: p.name, content: speech });
-          setSpeaking(p.id, speech);
-          G.logs[G.logs.length - 1] = { content: `${p.name}：${speech}`, type: "speech", playerData: p };
-          renderChat();
-          await playTTS(p.name, speech);
+          await playTTS(p.name, speech, () => {
+            setSpeaking(p.id, speech);
+            G.logs[G.logs.length - 1] = { content: `${p.name}：${speech}`, type: "speech", playerData: p };
+            renderChat();
+          });
         } catch (e) {
           const _rid = `retry_${Date.now()}_speech_${p.id}`;
           retryStore[_rid] = { player: p, systemPrompt: makeSystemPrompt(p), userPrompt: prompt };

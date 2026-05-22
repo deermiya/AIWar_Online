@@ -41,10 +41,10 @@ limiter = Limiter(
 # ║        在这里填入你的 API Key                ║
 # ╚══════════════════════════════════════════════╝
 
-DOUBAO_KEY     = os.environ.get("DOUBAO_KEY")
-DEEPSEEK_KEY   = os.environ.get("DEEPSEEK_KEY")
-GEMINI_KEY     = os.environ.get("GEMINI_KEY")
-OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY")
+DOUBAO_KEY     = os.environ.get("DOUBAO_KEY") or os.environ.get("MIMO_KEY")
+DEEPSEEK_KEY   = os.environ.get("DEEPSEEK_KEY") or os.environ.get("MIMO_KEY")
+GEMINI_KEY     = os.environ.get("GEMINI_KEY") or os.environ.get("MIMO_KEY")
+OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY") or os.environ.get("MIMO_KEY")
 MIMO_KEY       = os.environ.get("MIMO_KEY")
 
 
@@ -55,63 +55,66 @@ MIMO_KEY       = os.environ.get("MIMO_KEY")
 # ╚══════════════════════════════════════════════╝
 # 你可以在这里统一定义可用的 API 模型。
 
+MIMO_URL = os.environ.get("MIMO_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
+MIMO_MODEL = os.environ.get("MIMO_MODEL") or "mimo-v2.5-pro"
+
 ENDPOINTS = {
     "doubao": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
-        "key":   MIMO_KEY,
-        "model": "doubao-pro-32k",
+        "url":   os.environ.get("DOUBAO_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "key":   DOUBAO_KEY,
+        "model": os.environ.get("DOUBAO_MODEL") or "doubao-pro-32k",
     },
     "deepseek": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
-        "key":   MIMO_KEY,
-        "model": "deepseek-chat",
+        "url":   os.environ.get("DEEPSEEK_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "key":   DEEPSEEK_KEY,
+        "model": os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat",
     },
     "gemini": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
-        "key":   MIMO_KEY,
-        "model": "gemini-1.5-pro",
+        "url":   os.environ.get("GEMINI_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "key":   GEMINI_KEY,
+        "model": os.environ.get("GEMINI_MODEL") or "gemini-1.5-pro",
     },
     "gpt": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
-        "key":   MIMO_KEY,
-        "model": "gpt-4o",
+        "url":   os.environ.get("GPT_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "key":   OPENROUTER_KEY,
+        "model": os.environ.get("GPT_MODEL") or "gpt-4o",
     },
     "claude": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
-        "key":   MIMO_KEY,
-        "model": "claude-3-5-sonnet-20240620",
+        "url":   os.environ.get("CLAUDE_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "key":   OPENROUTER_KEY,
+        "model": os.environ.get("CLAUDE_MODEL") or "claude-3-5-sonnet-20240620",
     },
     "grok": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
-        "key":   MIMO_KEY,
-        "model": "grok-beta",
+        "url":   os.environ.get("GROK_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "key":   OPENROUTER_KEY,
+        "model": os.environ.get("GROK_MODEL") or "grok-beta",
     },
     "qwen": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "url":   os.environ.get("QWEN_URL") or "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
         "key":   MIMO_KEY,
-        "model": "qwen-max",
+        "model": os.environ.get("QWEN_MODEL") or "qwen-max",
     },
     "mimo": {
-        "url":   "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        "url":   MIMO_URL,
         "key":   MIMO_KEY,
-        "model": "mimo-v2.5-pro",
+        "model": MIMO_MODEL,
     },
 }
 
 # ╔══════════════════════════════════════════════╗
 # ║        玩家绑定哪个 API 模型                   ║
 # ╚══════════════════════════════════════════════╝
-# 这里决定了前端 6 个玩家各自调用上面哪个 endpoint。
-# 如果你想让 6 个人都用 DeepSeek，就把后面的值全改成 "deepseek"
+# 这里决定了前端玩家各自调用上面哪个 endpoint。
+# 当前统一走 MiMo，玩家名称只保留前端角色区分。
 
 PLAYER_ENDPOINTS = {
-    "Doubao":   "doubao",
-    "DeepSeek": "deepseek",
-    "Gemini":   "gemini",
-    "ChatGPT":  "gpt",
-    "Claude":   "claude",
-    "Grok":     "grok",
-    "Qwen":     "qwen",
+    "Doubao":   "mimo",
+    "DeepSeek": "mimo",
+    "Gemini":   "mimo",
+    "ChatGPT":  "mimo",
+    "Claude":   "mimo",
+    "Grok":     "mimo",
+    "Qwen":     "mimo",
     "MiMo":     "mimo",
 }
 
@@ -174,8 +177,9 @@ def chat():
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg},
         ],
-        "max_tokens": 500,
+        "max_completion_tokens": 1024,
         "temperature": 0.9,
+        "thinking": {"type": "disabled"},
     }
 
     try:
@@ -189,7 +193,9 @@ def chat():
             err = result.get("error", {})
             msg = err.get("message", str(result)) if isinstance(err, dict) else str(err)
             return jsonify({"error": f"{player}: {msg}"}), 500
-        content = result["choices"][0]["message"]["content"]
+        content = result["choices"][0]["message"].get("content", "")
+        if not isinstance(content, str) or not content.strip():
+            return jsonify({"error": f"{player}: 模型返回了空白内容"}), 502
         return jsonify({"content": content, "player": player, "model": cfg["model"]})
     except requests.exceptions.Timeout:
         return jsonify({"error": f"{player} 响应超时"}), 504

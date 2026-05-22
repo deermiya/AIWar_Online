@@ -1,0 +1,39 @@
+# AI狼人杀 - 环境变量配置文件示例
+# 使用说明：复制此文件并重命名为 .env，然后填写对应的 API Key
+
+# 1. 统一中转 Key (若使用 MiMo 中转，只需配置此项即可)
+MIMO_KEY=
+MIMO_URL=https://token-plan-cn.xiaomimimo.com/v1/chat/completions
+MIMO_MODEL=mimo-v2.5-pro
+
+# 2. 独立渠道 Key (当前玩家聊天已统一绑定 MiMo，以下项仅保留为备用渠道配置)
+DOUBAO_KEY=
+DEEPSEEK_KEY=
+GEMINI_KEY=
+OPENROUTER_KEY=
+
+# 3. 独立渠道自定义 API Endpoint (可选配置，留空则默认使用 MiMo 代理接口)
+# 例如，如果使用 DeepSeek 官方 API：
+# DEEPSEEK_URL=https://api.deepseek.com/v1/chat/completions
+# DEEPSEEK_KEY=sk-xxxxxx
+# DEEPSEEK_MODEL=deepseek-chat
+DOUBAO_URL=
+DOUBAO_MODEL=
+
+DEEPSEEK_URL=
+DEEPSEEK_MODEL=
+
+GEMINI_URL=
+GEMINI_MODEL=
+
+GPT_URL=
+GPT_MODEL=
+
+CLAUDE_URL=
+CLAUDE_MODEL=
+
+GROK_URL=
+GROK_MODEL=
+
+QWEN_URL=
+QWEN_MODEL=

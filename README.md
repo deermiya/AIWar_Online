@@ -16,8 +16,9 @@ AI 狼人杀 Flask 应用，使用 Hugging Face Docker Space 部署。
 Space 通过 Gunicorn 在 `15000` 端口提供 Flask 服务。修改端口时，需要让
 README 顶部的 `app_port` 与 `Dockerfile` 中暴露的端口保持一致。
 
-当前后端在 `app.py` 中将所有模型玩家都路由到 `MIMO_KEY` 环境变量。部署时把
-它设置为 Hugging Face Space Secret，不要上传 `.env`，也不要把密钥写进仓库。
+当前后端在 `app.py` 中将所有模型玩家都路由到同一个 MiMo 聊天端点，默认模型是
+`mimo-v2.5-pro`，鉴权统一使用 `MIMO_KEY`。部署时把它设置为 Hugging Face
+Space Secret，不要上传 `.env`，也不要把密钥写进仓库。
 
 ## 部署到 Hugging Face
 
