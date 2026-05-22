@@ -253,4 +253,4 @@ if __name__ == "__main__":
     print("\nDEER杯AI狼人杀 服务器启动中...")
     print("打开浏览器访问: http://localhost:15000")
     print("按 Ctrl+C 停止服务器\n")
-    app.run(debug=True, port=15000)
+    app.run(host="0.0.0.0", debug=True, port=15000)

@@ -77,3 +77,27 @@ README 顶部的 `app_port` 与 `Dockerfile` 中暴露的端口保持一致。
 
    Secret 配置完成并且 Space 重启后，每个模型玩家都应该返回
    `"key_configured": true`。
+
+## 加入 deermiya.com 项目页
+
+博客站点仓库位于 `D:\Word\DeerBlog`，项目页内容文件是
+`content\page\projects\index.md`。AIWar 部署到 Hugging Face 后，在这个文件中
+新增项目入口：
+
+```markdown
+---
+
+### [AI 狼人杀 AIWar Online](https://deermiya-aiwar-online.hf.space/)
+
+让多家 AI 模型同桌对局的狼人杀实验。模型会在夜晚行动、白天发言和投票，也可以让真人加入一局。
+```
+
+修改博客后，在 DeerBlog 仓库执行构建验证：
+
+```powershell
+cd D:\Word\DeerBlog
+hugo --minify
+```
+
+构建通过后，`/projects/` 页面会出现 AIWar Online 的外部入口。后续如果 Space
+地址变化，只需要更新项目页中的链接地址。
