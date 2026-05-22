@@ -251,6 +251,6 @@ def health():
 
 if __name__ == "__main__":
     print("\nDEER杯AI狼人杀 服务器启动中...")
-    print("打开浏览器访问: http://localhost:5000")
+    print("打开浏览器访问: http://localhost:15000")
     print("按 Ctrl+C 停止服务器\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=15000)

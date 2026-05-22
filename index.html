@@ -936,7 +936,7 @@
       <section class="cy-panel">
         <div class="panel-header">
           <span>// TARGETS</span>
-          <button class="btn-sm" id="toggleBtn" style="display:none" onclick="toggleRoles()">HIDE_ROLE</button>
+          <button class="btn-sm" id="toggleBtn" style="display:none" onclick="toggleRoles()">隐藏身份</button>
         </div>
         <div id="playerCards" class="players-list"></div>
       </section>
@@ -958,12 +958,30 @@
     <!-- BOTTOM: CONTROLS -->
     <footer class="app-controls">
       <div class="controls">
-        <button class="cy-btn" id="introBtn" onclick="runIntro()">SYS.INTRO</button>
-        <button class="cy-btn yellow" id="actionBtn" onclick="handleAction()">EXECUTE</button>
-        <button class="cy-btn red" id="endBtn" onclick="endGame()" style="display:none">TERMINATE</button>
-        <button class="cy-btn" id="ttsBtn" onclick="toggleTTS()" style="background: var(--c-cyan);">TTS: ON</button>
+        <div style="display:flex; align-items:center; border:1px solid var(--c-cyan); padding:0 10px; height:45px; background:rgba(0,240,255,0.1);">
+          <input type="checkbox" id="joinAsHuman" onchange="render()" style="margin-right:8px; width:16px; height:16px; accent-color:var(--c-cyan); cursor:pointer;">
+          <label for="joinAsHuman" style="font-family:'Orbitron'; font-size:13px; color:var(--c-cyan); cursor:pointer; font-weight:bold; letter-spacing:1px; white-space:nowrap;">真人加入 (替代Qwen)</label>
+        </div>
+        <button class="cy-btn" id="introBtn" onclick="runIntro()">赛前介绍</button>
+        <button class="cy-btn yellow" id="actionBtn" onclick="handleAction()">开始执行</button>
+        <button class="cy-btn red" id="endBtn" onclick="endGame()" style="display:none">强制终止</button>
+        <button class="cy-btn" id="ttsBtn" onclick="toggleTTS()" style="background: var(--c-cyan);">语音: 开</button>
       </div>
     </footer>
+  </div>
+
+  <!-- HUMAN MODAL -->
+  <div id="humanModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+    <div class="cy-panel" style="padding: 20px 30px; width: 450px; max-width: 90%;">
+      <div class="panel-header" style="margin: -20px -30px 20px -30px; padding: 15px 30px;">
+        <span id="hmTitle" style="color:var(--c-cyan);">// HUMAN_INPUT_REQUIRED</span>
+      </div>
+      <p id="hmDesc" style="margin-bottom: 20px; font-family:'Rajdhani', sans-serif; font-size:16px; white-space:pre-wrap; max-height: 200px; overflow-y: auto;"></p>
+      <div id="hmContent" style="margin-bottom: 20px; display:flex; flex-wrap:wrap; gap:10px;"></div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button id="hmBtnOk" class="cy-btn">确认行动</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -985,6 +1003,72 @@
     function hexToRgb(hex) {
       var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return result ? parseInt(result[1], 16) + ", " + parseInt(result[2], 16) + ", " + parseInt(result[3], 16) : "0, 240, 255";
+    }
+
+    // ===== 真人交互逻辑 =====
+    let _hmSelected = null;
+    function awaitHumanAction(title, desc, type, options = []) {
+      return new Promise(resolve => {
+        const modal = document.getElementById('humanModal');
+        document.getElementById('hmTitle').innerText = "// " + title;
+        document.getElementById('hmDesc').innerText = desc;
+        const content = document.getElementById('hmContent');
+        content.innerHTML = '';
+        _hmSelected = null;
+
+        if (type === 'text') {
+          content.innerHTML = '<textarea id="hmInput" style="width:100%; height:100px; background:rgba(0,0,0,0.5); color:#fff; border:1px solid var(--c-cyan); padding:10px; font-family:\'Rajdhani\'; outline:none;" placeholder="在此输入你的发言..."></textarea>';
+        } else if (type === 'select') {
+          content.innerHTML = options.map(opt => `<button class="cy-btn btn-sm hm-opt-btn" data-val="${opt.value}" style="flex:1; min-width:30%; padding: 10px 0;">${opt.label}</button>`).join('');
+          const btns = content.querySelectorAll('.hm-opt-btn');
+          btns.forEach(btn => {
+            btn.onclick = () => {
+              btns.forEach(b => { b.style.background = 'transparent'; b.style.color = 'var(--c-cyan)'; });
+              btn.style.background = 'var(--c-cyan)';
+              btn.style.color = '#000';
+              _hmSelected = btn.getAttribute('data-val');
+            };
+          });
+        } else if (type === 'witch') {
+            let html = '';
+            if (options.canSave) html += `<button class="cy-btn btn-sm hm-opt-btn" data-action="save" style="width:100%; padding: 10px 0;">解药：救 ${options.killTargetName}</button>`;
+            if (options.canPoison) {
+                html += `<div style="width:100%; margin-top:10px;">毒药目标：<select id="hmPoisonTarget" style="background:#111; color:#fff; border:1px solid var(--c-cyan); padding:5px;"><option value="">不使用毒药</option>`;
+                options.alive.forEach(p => html += `<option value="${p.id}">${p.id}号 ${p.name}</option>`);
+                html += `</select></div>`;
+            }
+            if (!options.canSave && !options.canPoison) html += `<span>无药可用</span>`;
+            content.innerHTML = html;
+            
+            const btns = content.querySelectorAll('.hm-opt-btn');
+            btns.forEach(btn => {
+              btn.onclick = () => {
+                if (btn.style.background === 'var(--c-cyan)') {
+                    btn.style.background = 'transparent'; btn.style.color = 'var(--c-cyan)';
+                    _hmSelected = null;
+                } else {
+                    btn.style.background = 'var(--c-cyan)'; btn.style.color = '#000';
+                    _hmSelected = 'save';
+                }
+              };
+            });
+        }
+
+        modal.style.display = 'flex';
+        document.getElementById('hmBtnOk').onclick = () => {
+          let result = null;
+          if (type === 'text') {
+            result = document.getElementById('hmInput').value.trim();
+            if (!result) return;
+          } else if (type === 'select') {
+            result = _hmSelected;
+          } else if (type === 'witch') {
+             result = { save: _hmSelected === 'save', poison: document.getElementById('hmPoisonTarget') ? document.getElementById('hmPoisonTarget').value : null };
+          }
+          modal.style.display = 'none';
+          resolve(result);
+        };
+      });
     }
 
     // ===== 游戏状态 =====
@@ -1132,12 +1216,23 @@
       renderCards(); renderChat(); renderSubtitle(); renderButton();
       const tb = document.getElementById("toggleBtn");
       tb.style.display = G.players.length > 0 ? "" : "none";
-      tb.textContent = G.showRoles ? "HIDE_ROLE" : "SHOW_ROLE";
+      tb.textContent = G.showRoles ? "隐藏身份" : "显示身份";
     }
 
     function renderCards() {
       const box = document.getElementById("playerCards");
-      const list = G.players.length > 0 ? G.players : PLAYERS_CFG.map(p => ({ ...p, role: "?", alive: true }));
+      let list;
+      if (G.players.length > 0) {
+          list = G.players;
+      } else {
+          list = JSON.parse(JSON.stringify(PLAYERS_CFG)).map(p => ({ ...p, role: "?", alive: true }));
+          if (document.getElementById("joinAsHuman")?.checked) {
+              const qIdx = list.findIndex(p => p.name === "Qwen");
+              if (qIdx >= 0) {
+                  list[qIdx].name = "You(真人)"; list[qIdx].isHuman = true; list[qIdx].color = "#00ff00"; list[qIdx].icon = "/static/icons/qwen.jpeg";
+              }
+          }
+      }
 
       box.innerHTML = list.map((p, i) => {
         const sr = G.showRoles && p.role && p.role !== "?";
@@ -1249,7 +1344,7 @@
       const introBtn = document.getElementById("introBtn");
       const ttsBtn = document.getElementById("ttsBtn");
 
-      const labels = { "setup": "EXECUTE", "night": "NIGHT_FALL", "speeches": "START_SPEECH", "vote": "START_VOTE", "game_over": "REBOOT" };
+      const labels = { "setup": "开始执行", "night": "进入黑夜", "speeches": "开始发言", "vote": "开始投票", "game_over": "系统重启" };
       btn.textContent = G.loading ? "PROCESSING..." : labels[G.phase];
       btn.disabled = G.loading;
 
@@ -1260,7 +1355,7 @@
 
       // 更新 TTS 按钮状态
       if (ttsBtn) {
-        ttsBtn.textContent = G.ttsEnabled ? "TTS: ON" : "TTS: OFF";
+        ttsBtn.textContent = G.ttsEnabled ? "语音: 开" : "语音: 关";
         ttsBtn.style.background = G.ttsEnabled ? "var(--c-cyan)" : "#444";
         ttsBtn.style.color = G.ttsEnabled ? "#000" : "#888";
       }
@@ -1271,7 +1366,28 @@
       G.loading = true; G.logs = []; G.speakingId = null; render();
       addLog("SYS.INTRO_SEQUENCE", "phase");
 
-      for (const p of PLAYERS_CFG) {
+      const isHumanJoin = document.getElementById("joinAsHuman")?.checked;
+      let targetCfgs = JSON.parse(JSON.stringify(PLAYERS_CFG));
+      if (isHumanJoin) {
+         const qwenIdx = targetCfgs.findIndex(p => p.name === "Qwen");
+         if (qwenIdx >= 0) {
+            targetCfgs[qwenIdx].name = "You(真人)";
+            targetCfgs[qwenIdx].isHuman = true;
+            targetCfgs[qwenIdx].color = "#00ff00";
+            targetCfgs[qwenIdx].personality = "这是你自己";
+         }
+      }
+
+      for (const p of targetCfgs) {
+        if (p.isHuman) {
+          audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(p.id, "INPUTTING..."); });
+          const intro = await awaitHumanAction("SYS.INTRO", "请向大家做一句话自我介绍：", "text");
+          G.logs.push({ content: `${p.name}：${intro}`, type: "speech", playerData: p });
+          renderChat();
+          audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(null); });
+          continue;
+        }
+
         const sys = `你是 ${p.name}，一个 AI 语言模型。现在需要用中文向大家自我介绍：第一句话说明你是哪家公司的什么模型，第二句话说你的狼人杀游戏挑衅其他5个AI模型的宣言。不要超过30个字。语言风格要符合你的性格特点：${p.personality}。不超过2句话，简洁有力。`;
         const msg = `请用你自己的风格介绍一下你自己。`;
 
@@ -1361,8 +1477,19 @@ ${roleInfo}
 
     function startGame() {
       const roles = shuffle(ROLE_POOL);
+      const isHumanJoin = document.getElementById("joinAsHuman")?.checked;
+      let finalPlayersCfg = JSON.parse(JSON.stringify(PLAYERS_CFG));
+      if (isHumanJoin) {
+         const qwenIdx = finalPlayersCfg.findIndex(p => p.name === "Qwen");
+         if (qwenIdx >= 0) {
+            finalPlayersCfg[qwenIdx].name = "You(真人)";
+            finalPlayersCfg[qwenIdx].isHuman = true;
+            finalPlayersCfg[qwenIdx].color = "#00ff00";
+            finalPlayersCfg[qwenIdx].personality = "这是你自己";
+         }
+      }
       G = {
-        players: PLAYERS_CFG.map((p, i) => ({ ...p, role: roles[i], alive: true })),
+        players: finalPlayersCfg.map((p, i) => ({ ...p, role: roles[i], alive: true })),
         phase: "night", day: 1, logs: [], loading: false, winner: null, showRoles: true,
         witchItems: { save: true, poison: true }, seerHistory: [], gameHistory: [], speakingId: null
       };
@@ -1387,21 +1514,31 @@ ${roleInfo}
         playHostTTS('狼人请睁眼，请确认击杀目标。', () => { addLog(`WOLF_ACTION...`, "system"); });
         for (const wolf of wolves) {
           audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(wolf.id, "TARGETING..."); });
-          const candidates = nonWolves.map(p => p.id + "号" + p.name).join("、");
-          let prompt = `现在是第${G.day}天夜晚，你要选择杀谁。\n可选：${candidates}\n`;
-          if (wolves.length > 1 && wolfTarget) prompt += `队友建议杀 ${byId(wolfTarget)?.name}，同意吗？\n`;
-          prompt += `返回JSON：{"target":目标id数字,"reason":"一句话理由"}`;
-
-          try {
-            const resp = await callPlayer(wolf.name, makeSystemPrompt(wolf), prompt);
-            const r = parseJSON(resp);
-            if (r?.target) {
-              wolfTarget = r.target;
-              audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${wolf.name} 锁定 → ${byId(r.target)?.name}`, "system"); });
+          
+          if (wolf.isHuman) {
+            const opts = nonWolves.map(x => ({label: x.id+"号 "+x.name, value: x.id}));
+            const res = await awaitHumanAction("狼人行动", "请选择击杀目标：", "select", opts);
+            if (res) {
+               wolfTarget = parseInt(res);
+               audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${wolf.name} 锁定 → ${byId(wolfTarget)?.name}`, "system"); });
             }
-          } catch (e) {
-            audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${wolf.name} [ERROR]`, "system"); });
-            if (!wolfTarget) wolfTarget = nonWolves[Math.floor(Math.random() * nonWolves.length)].id;
+          } else {
+            const candidates = nonWolves.map(p => p.id + "号" + p.name).join("、");
+            let prompt = `现在是第${G.day}天夜晚，你要选择杀谁。\n可选：${candidates}\n`;
+            if (wolves.length > 1 && wolfTarget) prompt += `队友建议杀 ${byId(wolfTarget)?.name}，同意吗？\n`;
+            prompt += `返回JSON：{"target":目标id数字,"reason":"一句话理由"}`;
+
+            try {
+              const resp = await callPlayer(wolf.name, makeSystemPrompt(wolf), prompt);
+              const r = parseJSON(resp);
+              if (r?.target) {
+                wolfTarget = r.target;
+                audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${wolf.name} 锁定 → ${byId(r.target)?.name}`, "system"); });
+              }
+            } catch (e) {
+              audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${wolf.name} [ERROR]`, "system"); });
+              if (!wolfTarget) wolfTarget = nonWolves[Math.floor(Math.random() * nonWolves.length)].id;
+            }
           }
           audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(null); });
         }
@@ -1416,16 +1553,27 @@ ${roleInfo}
       if (seer) {
         playHostTTS('预言家请睁眼，请选择要查验的玩家。', () => { setSpeaking(seer.id, "SCANNING..."); addLog(`SEER_ACTION...`, "system"); });
         const canCheck = alive().filter(p => p.id !== seer.id && !G.seerHistory.find(h => h.target === p.id));
-        const prompt = `你要查验一个人的身份。\n可查验：${canCheck.map(p => p.id + "号" + p.name).join("、")}\n返回JSON：{"target":目标id数字,"reason":"一句话理由"}`;
-        try {
-          const resp = await callPlayer(seer.name, makeSystemPrompt(seer), prompt);
-          const r = parseJSON(resp);
-          if (r?.target) {
-            const tp = byId(r.target), result = tp?.role === "狼人" ? "狼人" : "好人";
-            G.seerHistory.push({ target: r.target, result });
-            audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${seer.name} 扫描 ${tp?.name} → ${result}`, "system"); });
-          }
-        } catch (e) { audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${seer.name} [ERROR]`, "system"); }); }
+        if (seer.isHuman) {
+            const opts = canCheck.map(x => ({label: x.id+"号 "+x.name, value: x.id}));
+            const res = await awaitHumanAction("预言家行动", "请选择查验目标：", "select", opts);
+            if (res) {
+                const targetId = parseInt(res);
+                const tp = byId(targetId), result = tp?.role === "狼人" ? "狼人" : "好人";
+                G.seerHistory.push({ target: targetId, result });
+                audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${seer.name} 扫描 ${tp?.name} → ${result}`, "system"); });
+            }
+        } else {
+            const prompt = `你要查验一个人的身份。\n可查验：${canCheck.map(p => p.id + "号" + p.name).join("、")}\n返回JSON：{"target":目标id数字,"reason":"一句话理由"}`;
+            try {
+              const resp = await callPlayer(seer.name, makeSystemPrompt(seer), prompt);
+              const r = parseJSON(resp);
+              if (r?.target) {
+                const tp = byId(r.target), result = tp?.role === "狼人" ? "狼人" : "好人";
+                G.seerHistory.push({ target: r.target, result });
+                audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${seer.name} 扫描 ${tp?.name} → ${result}`, "system"); });
+              }
+            } catch (e) { audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${seer.name} [ERROR]`, "system"); }); }
+        }
         audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(null); });
       } else {
         playHostTTS('预言家请睁眼，请选择要查验的玩家。', () => { });
@@ -1436,20 +1584,37 @@ ${roleInfo}
       let saved = false, poisoned = null;
       if (witch && (G.witchItems.save || G.witchItems.poison)) {
         playHostTTS('女巫请睁眼，你要使用解药吗？你要使用毒药吗？', () => { setSpeaking(witch.id, "CHEM_ANALYSIS..."); addLog(`WITCH_ACTION...`, "system"); });
-        const prompt = `今晚 ${byId(wolfTarget)?.name} 被杀。
+        if (witch.isHuman) {
+            const opts = {
+                canSave: G.witchItems.save, 
+                canPoison: G.witchItems.poison, 
+                killTargetName: byId(wolfTarget)?.name || "无",
+                alive: alive().filter(p => p.id !== witch.id)
+            };
+            const res = await awaitHumanAction("女巫行动", `今晚 ${opts.killTargetName} 被袭击。你要使用解药或毒药吗？`, "witch", opts);
+            if (res) {
+                if (res.save && G.witchItems.save) { saved = true; G.witchItems.save = false; audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} HEALED ${byId(wolfTarget)?.name}`, "system"); }); }
+                if (res.poison && G.witchItems.poison) {
+                    const pp = byId(parseInt(res.poison));
+                    if (pp && pp.alive) { poisoned = parseInt(res.poison); G.witchItems.poison = false; audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} POISONED ${pp.name}`, "system"); }); }
+                }
+            }
+        } else {
+            const prompt = `今晚 ${byId(wolfTarget)?.name} 被杀。
 ${G.witchItems.save ? "你有解药" : "无解药"}，${G.witchItems.poison ? "有毒药，可选：" + alive().filter(p => p.id !== witch.id).map(p => p.id + "号").join("、") : "无毒药"}
 返回JSON：{"save":true/false,"poison":目标id或null,"reason":"理由"}`;
-        try {
-          const resp = await callPlayer(witch.name, makeSystemPrompt(witch), prompt);
-          const r = parseJSON(resp);
-          if (r) {
-            if (r.save && G.witchItems.save) { saved = true; G.witchItems.save = false; audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} HEALED ${byId(wolfTarget)?.name}`, "system"); }); }
-            if (r.poison && G.witchItems.poison) {
-              const pp = byId(r.poison);
-              if (pp && pp.alive) { poisoned = r.poison; G.witchItems.poison = false; audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} POISONED ${pp.name}`, "system"); }); }
-            }
-          }
-        } catch (e) { audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} [ERROR]`, "system"); }); }
+            try {
+              const resp = await callPlayer(witch.name, makeSystemPrompt(witch), prompt);
+              const r = parseJSON(resp);
+              if (r) {
+                if (r.save && G.witchItems.save) { saved = true; G.witchItems.save = false; audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} HEALED ${byId(wolfTarget)?.name}`, "system"); }); }
+                if (r.poison && G.witchItems.poison) {
+                  const pp = byId(r.poison);
+                  if (pp && pp.alive) { poisoned = r.poison; G.witchItems.poison = false; audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} POISONED ${pp.name}`, "system"); }); }
+                }
+              }
+            } catch (e) { audioQueuePromise = audioQueuePromise.then(() => { addLog(`  ${witch.name} [ERROR]`, "system"); }); }
+        }
         audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(null); });
       } else {
         playHostTTS('女巫请睁眼，你要使用解药吗？你要使用毒药吗？', () => { });
@@ -1498,6 +1663,17 @@ ${G.witchItems.save ? "你有解药" : "无解药"}，${G.witchItems.poison ? "�
       for (const p of aliveP) {
         addLog(`  [AWAITING_INPUT] ${p.name}...`, "system");
         const prevText = prevSpeeches.length > 0 ? "前面发言：\n" + prevSpeeches.map(s => `${s.name}：${s.content}`).join("\n") : "你是第一个发言的。";
+        
+        if (p.isHuman) {
+          audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(p.id, "INPUTTING..."); });
+          const speech = await awaitHumanAction("白天发言", `轮到你了。\n\n${prevText}`, "text");
+          prevSpeeches.push({ name: p.name, content: speech });
+          G.logs[G.logs.length - 1] = { content: `${p.name}：${speech}`, type: "speech", playerData: p };
+          renderChat();
+          audioQueuePromise = audioQueuePromise.then(() => { setSpeaking(null); });
+          continue;
+        }
+
         const prompt = `第${G.day}天白天发言。${prevText}\n请发表看法（2-3句话）。直接说话，不要JSON或引号。`;
 
         try {
@@ -1535,7 +1711,25 @@ ${G.witchItems.save ? "你有解药" : "无解药"}，${G.witchItems.poison ? "�
       for (const p of aliveP) {
         setSpeaking(p.id, "ANALYZING_VOTE...");
         addLog(`  [VOTING] ${p.name}...`, "system");
-        const candidates = aliveP.filter(x => x.id !== p.id).map(x => x.id + "号" + x.name).join("、");
+        const validTargets = aliveP.filter(x => x.id !== p.id);
+        
+        if (p.isHuman) {
+           const opts = validTargets.map(x => ({label: x.id+"号 "+x.name, value: x.id}));
+           opts.push({label: "弃票", value: "0"});
+           const res = await awaitHumanAction("投票阶段", "请选择你要投票淘汰的玩家：", "select", opts);
+           if (res && res !== "0") {
+              const targetId = parseInt(res);
+              const tp = byId(targetId);
+              G.logs[G.logs.length - 1] = { content: `${p.name} → VOTE_FOR → ${tp.name}`, type: "system" };
+              voteCount[targetId] = (voteCount[targetId] || 0) + 1;
+           } else {
+              G.logs[G.logs.length - 1] = { content: `${p.name} → ABSTAIN`, type: "system" };
+           }
+           setSpeaking(null);
+           continue;
+        }
+
+        const candidates = validTargets.map(x => x.id + "号" + x.name).join("、");
         const prompt = `投票环节。前面发言：\n${speechText}\n可投：${candidates}（不能投自己）\n返回JSON：{"target":目标id数字,"reason":"一句话理由"}`;
 
         let r = null, retries = 0, finalPrompt = prompt, commError = null;
